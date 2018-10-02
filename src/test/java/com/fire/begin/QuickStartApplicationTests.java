@@ -11,6 +11,7 @@ public class QuickStartApplicationTests {
 
 	@Test
 	public void contextLoads() {
+
 		System.out.println("kkkk");
 	}
 
