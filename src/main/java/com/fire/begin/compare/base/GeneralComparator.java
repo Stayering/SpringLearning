@@ -20,55 +20,73 @@ public class GeneralComparator implements ModelCompare {
 
     @Override
     public Diff compare(Object newData, Object oldData) {
-        if (newData.equals(oldData)) {
+        if (Objects.equals(newData,oldData)) {
             return null;
         }
+
+
         List<Diff> subDiffList = new ArrayList<>();
-        Class classInfo = newData.getClass();
-        Field[] fields = classInfo.getDeclaredFields();
 
-        for (Field field : fields) {
+        if (newData instanceof List) {
+            List newList = (List) newData;
+            List oldList = (List) oldData;
 
-            field.setAccessible(true);
-
-
-            Object newSubData = ReflectObjectUtils.getValueByField(newData, field);
-
-            Object oldSubData = ReflectObjectUtils.getValueByField(oldData, field);
-
-            if (ClassUtils.isPrimitiveOrWrapper(field.getType()) || String.class.equals(field.getType())) {
-
-
-                if (!Objects.equals(newSubData, oldSubData)) {
-                    Diff diff = new Diff();
-                    diff.setKey(field.getName());
-
-                    diff.setType(field.getType());
-
-                    diff.setNewModle(newSubData);
-
-                    diff.setOldModel(oldSubData);
-
-                    subDiffList.add(diff);
-                }
-
-
-            } else {
-
-
-                Diff diff = compare(newSubData, oldSubData);
-
+            for (int i = 0; i < newList.size(); i++) {
+                Diff diff = compare(newList.get(i), oldList.get(i));
                 if (diff != null) {
                     subDiffList.add(diff);
                 }
+
             }
 
+        } else {
+            Class classInfo = newData.getClass();
+
+            if (ReflectObjectUtils.isSimpleClassType(classInfo)) {
+                return simpleObjectCompare(newData, oldData);
+
+            } else {
+                Field[] fields = classInfo.getDeclaredFields();
+
+                for (Field field : fields) {
+
+                    field.setAccessible(true);
+
+                    Object newSubData = ReflectObjectUtils.getValueByField(newData, field);
+
+                    Object oldSubData = ReflectObjectUtils.getValueByField(oldData, field);
+
+                    //处理基本类型或者基本类型的封装类或者String类型的属性
+                    if (ReflectObjectUtils.isSimpleClassType(field.getType())){
+                        if (!Objects.equals(newSubData, oldSubData)) {
+                            Diff diff = new Diff();
+                            diff.setKey(field.getName());
+
+                            diff.setType(field.getType());
+
+                            diff.setNewModle(newSubData);
+
+                            diff.setOldModel(oldSubData);
+
+                            subDiffList.add(diff);
+                        }
+
+                    } else{
+
+                        Diff diff = compare(newSubData, oldSubData);
+
+                        if (diff != null) {
+                            subDiffList.add(diff);
+                        }
+                    }
+                }
+            }
         }
+
 
         if (subDiffList.isEmpty()) {
             return null;
         } else {
-
             Diff diff = new Diff();
 
             diff.setKey(newData.getClass().getName());
@@ -82,4 +100,32 @@ public class GeneralComparator implements ModelCompare {
         }
 
     }
+
+
+    /**
+     * 基本类型比较
+     *
+     * @param newData
+     * @param oldData
+     * @return
+     */
+    private Diff simpleObjectCompare(Object newData, Object oldData) {
+
+        Class classInfo = newData.getClass();
+        if (!Objects.equals(newData, oldData)) {
+            Diff diff = new Diff();
+            diff.setKey(classInfo.getName());
+
+            diff.setType(classInfo);
+
+            diff.setNewModle(newData);
+
+            diff.setOldModel(oldData);
+
+            return diff;
+        }
+        return null;
+
+    }
+
 }
